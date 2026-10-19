@@ -603,22 +603,48 @@ let selectedMoodText = 'ممتاز ومناسب 💪';
 let timerInterval = null;
 let googleScriptUrl = 'https://script.google.com/macros/s/AKfycbyu5rltuU6cr2yzE32bXGHIPJvT5LwOGlRtB136cFKa6LPndr2Ozx8M3UgOMRNZTqk/exec';
 const DOMAIN_URL = 'https://youniscris.com';
-window.addEventListener('DOMContentLoaded', () => {
+function initApp() {
+try {
 const hash = window.location.hash;
-if (hash.includes('client=')) {
-const clientSlug = hash.split('client=')[1];
-document.getElementById('coachClientSelect').value = clientSlug;
-switchView('client');
+const clientSelect = document.getElementById('coachClientSelect');
+if (hash && hash.includes('client=')) {
+const clientSlug = decodeURIComponent(hash.split('client=')[1]);
+if (clientSelect) {
+let found = false;
+for (let i = 0; i < clientSelect.options.length; i++) {
+if (clientSelect.options[i].value === clientSlug) {
+clientSelect.selectedIndex = i;
+found = true;
+break;
 }
-document.getElementById('gasUrlInput').value = googleScriptUrl;
+}
+if (!found && clientSlug) {
+const opt = document.createElement('option');
+opt.value = clientSlug;
+opt.textContent = ⁠${clientSlug} (Sheet Tab: جدول_${clientSlug})⁠;
+clientSelect.appendChild(opt);
+clientSelect.value = clientSlug;
+}
+updateClientLinkPreview();
+}
+}
+const gasInput = document.getElementById('gasUrlInput');
+if (gasInput) gasInput.value = googleScriptUrl;
 initCoachDatabaseSelectors();
 renderExercises();
-});
+} catch (err) {
+console.error('Initialization error:', err);
+}
+}
+if (document.readyState === 'loading') {
+document.addEventListener('DOMContentLoaded', initApp);
+} else {
+initApp();
+}
 function saveGasUrl() {
 const urlVal = document.getElementById('gasUrlInput').value.trim();
 if (urlVal) {
 googleScriptUrl = urlVal;
-localStorage.setItem('younis_gas_url', urlVal);
 showToast('✅ تم حفظ رابط الـ Google Sheets Web App بنجاح!');
 }
 }
@@ -677,6 +703,7 @@ renderCoachDaySummary();
 function renderExercises() {
 syncDayDropdowns();
 const container = document.getElementById('exercisesList');
+if (!container) return;
 container.innerHTML = '';
 const exercisesData = getActiveExercises();
 if (exercisesData.length === 0) {
@@ -734,7 +761,7 @@ const cardHtml = `
 ￼
 ￼
 ￼
-<p class="text-[11px] text-slate-400">{ex.muscle}</p>
+￼{ex.muscle}</p>
 </div>
 <div class="flex flex-col gap-1.5 shrink-0">
 <button onclick="openVideoModal('${ex.videoUrl}', '${ex.currentName}')" class="bg-red-500/15 border border-red-500/40 text-red-400 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 hover:bg-red-500/25 transition">
@@ -825,23 +852,30 @@ if (s.isPR) prCount++;
 });
 });
 const pct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
-document.getElementById('totalVolumeKg').textContent = totalVolume.toLocaleString();
-document.getElementById('completedSetsCount').textContent = ⁠${completedSets} / ${totalSets}⁠;
-document.getElementById('workoutProgressPct').textContent = ⁠${pct}%⁠;
-document.getElementById('workoutProgressBar').style.width = ⁠${pct}%⁠;
-document.getElementById('prCountBadge').textContent = ⁠🏆 ${prCount} أرقام قياسية اليوم⁠;
+const volEl = document.getElementById('totalVolumeKg');
+const setsEl = document.getElementById('completedSetsCount');
+const pctEl = document.getElementById('workoutProgressPct');
+const barEl = document.getElementById('workoutProgressBar');
+const badgeEl = document.getElementById('prCountBadge');
+if (volEl) volEl.textContent = totalVolume.toLocaleString();
+if (setsEl) setsEl.textContent = ⁠${completedSets} / ${totalSets}⁠;
+if (pctEl) pctEl.textContent = ⁠${pct}%⁠;
+if (barEl) barEl.style.width = ⁠${pct}%⁠;
+if (badgeEl) badgeEl.textContent = ⁠🏆 ${prCount} أرقام قياسية اليوم⁠;
 }
 function openAltModal(exIdx) {
 const exercisesData = getActiveExercises();
 activeExerciseIndexForAlt = exIdx;
 const ex = exercisesData[exIdx];
 const list = document.getElementById('altOptionsList');
+if (!list) return;
 list.innerHTML = '';
 ex.alternatives.forEach((alt, altIdx) => {
 const isSelected = ex.currentName === alt.name.split(' (')[0] || ex.currentName === alt.name;
 list.insertAdjacentHTML('beforeend', ⁠<div onclick="selectAlternative(${altIdx})" class="p-3 rounded-xl border cursor-pointer transition flex justify-between items-center ${isSelected ? 'bg-emerald-500/15 border-emerald-500' : 'bg-slate-950 border-slate-800 hover:border-slate-600'}"> <div> <div class="text-xs font-extrabold text-white">${alt.name}</div> <div class="text-[10px] text-slate-400 mt-0.5">${alt.notes}</div> </div> <span class="text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-amber-400'}"> ${isSelected ? 'محدد حالياً ✓' : 'اختيار'} </span> </div>⁠);
 });
-document.getElementById('altModal').classList.remove('hidden');
+const altModal = document.getElementById('altModal');
+if (altModal) altModal.classList.remove('hidden');
 }
 function selectAlternative(altIdx) {
 const exercisesData = getActiveExercises();
@@ -854,7 +888,8 @@ closeAltModal();
 renderExercises();
 }
 function closeAltModal() {
-document.getElementById('altModal').classList.add('hidden');
+const altModal = document.getElementById('altModal');
+if (altModal) altModal.classList.add('hidden');
 }
 function openVideoModal(url, title) {
 let cleanUrl = url || 'https://www.youtube.com';
@@ -863,17 +898,22 @@ const parts = cleanUrl.split('youtu.be/');
 const id = parts[1].split('?')[0];
 cleanUrl = ⁠https://www.youtube.com/watch?v=${id}⁠;
 }
-document.getElementById('externalVideoLink').href = cleanUrl;
-document.getElementById('videoModalTitle').textContent = ⁠شرح تمرين: ${title}⁠;
-document.getElementById('videoModal').classList.remove('hidden');
+const extLink = document.getElementById('externalVideoLink');
+const modalTitle = document.getElementById('videoModalTitle');
+const videoModal = document.getElementById('videoModal');
+if (extLink) extLink.href = cleanUrl;
+if (modalTitle) modalTitle.textContent = ⁠شرح تمرين: ${title}⁠;
+if (videoModal) videoModal.classList.remove('hidden');
 }
 function closeVideoModal() {
-document.getElementById('videoModal').classList.add('hidden');
+const videoModal = document.getElementById('videoModal');
+if (videoModal) videoModal.classList.add('hidden');
 }
 function startRestTimer(seconds) {
 clearInterval(timerInterval);
 const display = document.getElementById('restTimerDisplay');
 const countdown = document.getElementById('timerCountdown');
+if (!display || !countdown) return;
 display.classList.remove('hidden');
 let timeLeft = seconds;
 const updateDisplay = () => {
@@ -894,7 +934,8 @@ updateDisplay();
 }
 function skipRestTimer() {
 clearInterval(timerInterval);
-document.getElementById('restTimerDisplay').classList.add('hidden');
+const display = document.getElementById('restTimerDisplay');
+if (display) display.classList.add('hidden');
 }
 function selectMood(btn, moodText) {
 selectedMoodText = moodText;
@@ -907,7 +948,9 @@ btn.classList.add('border-emerald-400', 'bg-emerald-500/20', 'scale-105');
 }
 function showToast(msg) {
 const toast = document.getElementById('toastNotification');
-document.getElementById('toastMessage').textContent = msg;
+const msgEl = document.getElementById('toastMessage');
+if (!toast || !msgEl) return;
+msgEl.textContent = msg;
 toast.classList.remove('hidden');
 setTimeout(() => { toast.classList.add('hidden'); }, 3500);
 }
@@ -925,13 +968,18 @@ checkPRStatus(exIdx, setIdx);
 });
 renderExercises();
 const dayTitle = scheduleData[currentDayKey] ? scheduleData[currentDayKey].title : 'اليوم';
-const vol = document.getElementById('totalVolumeKg').textContent;
-document.getElementById('modalFinishedDayName').textContent = dayTitle;
-document.getElementById('modalFinishedVolume').textContent = vol;
-document.getElementById('finishWorkoutModal').classList.remove('hidden');
+const volEl = document.getElementById('totalVolumeKg');
+const vol = volEl ? volEl.textContent : '0';
+const dayNameEl = document.getElementById('modalFinishedDayName');
+const finVolEl = document.getElementById('modalFinishedVolume');
+const finModal = document.getElementById('finishWorkoutModal');
+if (dayNameEl) dayNameEl.textContent = dayTitle;
+if (finVolEl) finVolEl.textContent = vol;
+if (finModal) finModal.classList.remove('hidden');
 }
 function closeFinishWorkoutModal() {
-document.getElementById('finishWorkoutModal').classList.add('hidden');
+const finModal = document.getElementById('finishWorkoutModal');
+if (finModal) finModal.classList.add('hidden');
 }
 function confirmAndAdvanceNextDay() {
 closeFinishWorkoutModal();
@@ -953,9 +1001,11 @@ isPR: s.isPR
 });
 const clientSelect = document.getElementById('coachClientSelect');
 const clientNameClean = clientSelect ? clientSelect.options[clientSelect.selectedIndex].text.split(' (')[0] : 'مصطفى حسين';
-const weekNum = document.getElementById('weekSelect').value;
+const weekSelect = document.getElementById('weekSelect');
+const weekNum = weekSelect ? weekSelect.value : '2';
 const dayTitle = scheduleData[currentDayKey].title;
-const noteText = document.getElementById('clientWorkoutNote').value.trim();
+const noteEl = document.getElementById('clientWorkoutNote');
+const noteText = noteEl ? noteEl.value.trim() : '';
 const payload = {
 clientName: clientNameClean,
 week: ⁠الأسبوع ${weekNum}⁠,
@@ -981,13 +1031,12 @@ showToast('🚀 تم حفظ التمرين وإرساله لشيت الكابت�
 } else {
 showToast('⚠️ تنبيه: لم يتم ربط رابط Google Sheets Web App.');
 }
-document.getElementById('clientWorkoutNote').value = '';
+if (noteEl) noteEl.value = '';
 const dayKeys = Object.keys(scheduleData);
 const currentIndex = dayKeys.indexOf(currentDayKey);
 const nextIndex = (currentIndex + 1) % dayKeys.length;
 currentDayKey = dayKeys[nextIndex];
-if (nextIndex === 0) {
-const weekSelect = document.getElementById('weekSelect');
+if (nextIndex === 0 && weekSelect) {
 if (weekSelect.selectedIndex < weekSelect.options.length - 1) {
 weekSelect.selectedIndex += 1;
 }
@@ -1000,17 +1049,18 @@ const clientContainer = document.getElementById('clientViewContainer');
 const coachContainer = document.getElementById('coachViewContainer');
 const btnClient = document.getElementById('btnClientView');
 const btnCoach = document.getElementById('btnCoachView');
+if (!clientContainer || !coachContainer) return;
 if (view === 'client') {
 clientContainer.classList.remove('hidden');
 coachContainer.classList.add('hidden');
-btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
-btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
+if (btnClient) btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
+if (btnCoach) btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
 renderExercises();
 } else {
 clientContainer.classList.add('hidden');
 coachContainer.classList.remove('hidden');
-btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
-btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
+if (btnCoach) btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
+if (btnClient) btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
 syncDayDropdowns();
 initCoachDatabaseSelectors();
 renderCoachDaySummary();
@@ -1065,9 +1115,11 @@ const selectedMuscle = muscleSelect.value;
 const exercisesList = coachDatabase[selectedMuscle] || [];
 const chosenIdx = parseInt(exSelect.value) || 0;
 const chosenEx = exercisesList[chosenIdx];
+const vidInput = document.getElementById('coachExVideo');
+const noteInput = document.getElementById('coachExNotes');
 if (chosenEx) {
-document.getElementById('coachExVideo').value = chosenEx.videoUrl || '';
-document.getElementById('coachExNotes').value = chosenEx.notes || '';
+if (vidInput) vidInput.value = chosenEx.videoUrl || '';
+if (noteInput) noteInput.value = chosenEx.notes || '';
 }
 altsContainer.innerHTML = '';
 exercisesList.forEach((exObj, idx) => {
@@ -1083,17 +1135,26 @@ cb.checked = checkState;
 }
 function toggleQuickAddExerciseBox() {
 const box = document.getElementById('quickAddDbBox');
+if (!box) return;
 box.classList.toggle('hidden');
 if (!box.classList.contains('hidden')) {
-document.getElementById('newDbMuscleSelect').value = document.getElementById('coachMuscleSelect').value;
-document.getElementById('newDbExName').focus();
+const muscleSel = document.getElementById('coachMuscleSelect');
+const newDbMus = document.getElementById('newDbMuscleSelect');
+const newDbName = document.getElementById('newDbExName');
+if (muscleSel && newDbMus) newDbMus.value = muscleSel.value;
+if (newDbName) newDbName.focus();
 }
 }
 function saveNewExerciseToDatabase() {
-const targetMuscle = document.getElementById('newDbMuscleSelect').value;
-const exName = document.getElementById('newDbExName').value.trim();
-let exVideo = document.getElementById('newDbExVideo').value.trim();
-const exNotes = document.getElementById('newDbExNotes').value.trim();
+const newDbMus = document.getElementById('newDbMuscleSelect');
+const newDbName = document.getElementById('newDbExName');
+const newDbVid = document.getElementById('newDbExVideo');
+const newDbNotes = document.getElementById('newDbExNotes');
+if (!newDbMus || !newDbName) return;
+const targetMuscle = newDbMus.value;
+const exName = newDbName.value.trim();
+let exVideo = newDbVid ? newDbVid.value.trim() : '';
+const exNotes = newDbNotes ? newDbNotes.value.trim() : '';
 if (!exName) {
 showToast('⚠️ يرجى كتابة اسم التمرين الجديد أولاً');
 return;
@@ -1109,25 +1170,30 @@ name: exName,
 videoUrl: exVideo,
 notes: exNotes || 'مضاف حديثاً من الكابتن.'
 });
-document.getElementById('coachMuscleSelect').value = targetMuscle;
+const muscleSel = document.getElementById('coachMuscleSelect');
+if (muscleSel) muscleSel.value = targetMuscle;
 initCoachDatabaseSelectors();
-document.getElementById('coachMuscleSelect').value = targetMuscle;
+if (muscleSel) muscleSel.value = targetMuscle;
 onCoachMuscleChange();
 const newIdx = coachDatabase[targetMuscle].length - 1;
-document.getElementById('coachExerciseSelect').value = newIdx;
+const exSel = document.getElementById('coachExerciseSelect');
+if (exSel) exSel.value = newIdx;
 onCoachExerciseSelectChange();
-document.getElementById('newDbExName').value = '';
-document.getElementById('newDbExVideo').value = '';
-document.getElementById('newDbExNotes').value = '';
-document.getElementById('quickAddDbBox').classList.add('hidden');
+if (newDbName) newDbName.value = '';
+if (newDbVid) newDbVid.value = '';
+if (newDbNotes) newDbNotes.value = '';
+const box = document.getElementById('quickAddDbBox');
+if (box) box.classList.add('hidden');
 showToast(⁠✅ تم حفظ (${exName}) في قسم (${targetMuscle}) داخل الـ DATA BASE!⁠);
 }
 function addNewClient() {
 const nameInput = document.getElementById('newClientName');
+if (!nameInput) return;
 const name = nameInput.value.trim();
 if (!name) return;
 const slug = 'client_' + Math.floor(100 + Math.random() * 900);
 const select = document.getElementById('coachClientSelect');
+if (!select) return;
 const opt = document.createElement('option');
 opt.value = slug;
 opt.textContent = ⁠${name} (Sheet Tab: جدول_${name.replace(/\s+/g, '_')})⁠;
@@ -1139,13 +1205,18 @@ showToast(⁠🎉 تم إنشاء شيت خاص باسم (${name}) وتوليد 
 }
 function updateClientLinkPreview() {
 const select = document.getElementById('coachClientSelect');
+const headerEl = document.getElementById('activeClientHeader');
+const urlEl = document.getElementById('clientUniqueUrl');
+if (!select) return;
 const clientNameClean = select.options[select.selectedIndex].text.split(' (')[0];
-const baseUrl = DOMAIN_URL;
-document.getElementById('clientUniqueUrl').textContent = ⁠${baseUrl}/#client=${select.value}⁠;
-document.getElementById('activeClientHeader').innerHTML = ⁠اللاعب: <span class="text-emerald-400 font-bold">${clientNameClean}</span>⁠;
+const fullUrl = ⁠${DOMAIN_URL}/#client=${select.value}⁠;
+if (urlEl) urlEl.textContent = fullUrl;
+if (headerEl) headerEl.innerHTML = ⁠اللاعب: <span class="text-emerald-400 font-bold">${clientNameClean}</span>⁠;
 }
 function copyClientLink() {
-const url = document.getElementById('clientUniqueUrl').textContent;
+const urlEl = document.getElementById('clientUniqueUrl');
+if (!urlEl) return;
+const url = urlEl.textContent;
 const tempInput = document.createElement('input');
 tempInput.value = url;
 document.body.appendChild(tempInput);
@@ -1156,6 +1227,7 @@ showToast('📋 تم نسخ رابط العميل! أرسله له.');
 }
 function addNewTrainingDay() {
 const titleInput = document.getElementById('newCustomDayTitle');
+if (!titleInput) return;
 const title = titleInput.value.trim();
 if (!title) {
 showToast('⚠️ يرجى كتابة اسم اليوم الجديد أولاً');
@@ -1169,7 +1241,8 @@ exercises: []
 currentDayKey = newKey;
 titleInput.value = '';
 syncDayDropdowns();
-document.getElementById('coachTargetDaySelect').value = newKey;
+const targetDaySel = document.getElementById('coachTargetDaySelect');
+if (targetDaySel) targetDaySel.value = newKey;
 renderCoachDaySummary();
 showToast(⁠✅ تمت إضافة (${title})! يمكنك الآن إضافة تمارين وجولات له.⁠);
 }
@@ -1194,7 +1267,9 @@ showToast(⁠🗑️ تم حذف اليوم بنجاح.⁠);
 }
 }
 function clearCurrentDayExercises() {
-const targetDay = document.getElementById('coachTargetDaySelect').value;
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+if (!coachDaySelect) return;
+const targetDay = coachDaySelect.value;
 if (scheduleData[targetDay]) {
 scheduleData[targetDay].exercises = [];
 if (currentDayKey === targetDay) renderExercises();
@@ -1218,7 +1293,7 @@ const dayObj = scheduleData[targetDay];
 const listEl = document.getElementById('coachCurrentDayExercisesList');
 const countBadge = document.getElementById('coachDayExCount');
 if (!dayObj || !listEl) return;
-countBadge.textContent = ⁠${dayObj.exercises.length} تمارين⁠;
+if (countBadge) countBadge.textContent = ⁠${dayObj.exercises.length} تمارين⁠;
 listEl.innerHTML = '';
 if (dayObj.exercises.length === 0) {
 listEl.innerHTML = ⁠<div class="text-center text-xs text-slate-500 py-3 bg-slate-950 rounded-xl border border-slate-800">لا توجد تمارين في هذا اليوم بعد.</div>⁠;
@@ -1229,19 +1304,28 @@ listEl.insertAdjacentHTML('beforeend', ⁠<div class="bg-slate-950 border border
 });
 }
 function addExerciseFromCoach() {
-const targetDay = document.getElementById('coachTargetDaySelect').value || currentDayKey;
-const selectedMuscle = document.getElementById('coachMuscleSelect').value || 'عضلة مستهدفة';
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+const muscleSelect = document.getElementById('coachMuscleSelect');
+const exSelect = document.getElementById('coachExerciseSelect');
+const setsCountInput = document.getElementById('coachSetsCount');
+const targetRepsInput = document.getElementById('coachTargetReps');
+const initWeightInput = document.getElementById('coachInitWeight');
+const restSecInput = document.getElementById('coachRestSec');
+const notesInput = document.getElementById('coachExNotes');
+const videoInput = document.getElementById('coachExVideo');
+const targetDay = coachDaySelect ? coachDaySelect.value : currentDayKey;
+const selectedMuscle = muscleSelect ? muscleSelect.value : 'عضلة مستهدفة';
 const exList = coachDatabase[selectedMuscle] || [];
-const chosenIdx = parseInt(document.getElementById('coachExerciseSelect').value) || 0;
+const chosenIdx = exSelect ? parseInt(exSelect.value) || 0 : 0;
 const chosenExObj = exList[chosenIdx] || { name: 'تمرين مخصص', videoUrl: 'https://youtu.be/sopilXEBQxA', notes: '' };
 const mainEx = chosenExObj.name;
 const muscle = selectedMuscle;
-const setsCount = Math.max(1, parseInt(document.getElementById('coachSetsCount').value) || 3);
-const targetReps = document.getElementById('coachTargetReps').value.trim() || '8-12';
-const initWeight = parseFloat(document.getElementById('coachInitWeight').value) || 20;
-const restSeconds = parseInt(document.getElementById('coachRestSec').value) || 90;
-const notes = document.getElementById('coachExNotes').value.trim() || chosenExObj.notes || 'تحكم كامل بالوزن.';
-const videoUrl = document.getElementById('coachExVideo').value.trim() || chosenExObj.videoUrl || 'https://youtu.be/sopilXEBQxA';
+const setsCount = setsCountInput ? Math.max(1, parseInt(setsCountInput.value) || 3) : 3;
+const targetReps = targetRepsInput ? targetRepsInput.value.trim() : '8-12';
+const initWeight = initWeightInput ? parseFloat(initWeightInput.value) || 20 : 20;
+const restSeconds = restSecInput ? parseInt(restSecInput.value) || 90 : 90;
+const notes = notesInput ? notesInput.value.trim() : (chosenExObj.notes || 'تحكم كامل بالوزن.');
+const videoUrl = videoInput ? videoInput.value.trim() : (chosenExObj.videoUrl || 'https://youtu.be/sopilXEBQxA');
 const checkedDbAlts = [];
 document.querySelectorAll('.coach-alt-checkbox:checked').forEach(cb => {
 const altIdx = parseInt(cb.value);
