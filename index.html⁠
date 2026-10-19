@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منصة كابتن يونس التدريبية | YounisCris Fit PRO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+body { font-family: 'Cairo', sans-serif; background-color: #090d16; color: #f8fafc; overflow-x: hidden; }
+.glass-card { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.08); }
+.pr-glow { animation: prPulse 2s infinite; border-color: #f59e0b !important; }
+@keyframes prPulse {
+0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+50% { box-shadow: 0 0 18px 4px rgba(245, 158, 11, 0.25); }
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+</style>
+</head>
+<body class="min-h-screen pb-24">
+<!-- Top Role Switcher -->
+<div class="bg-slate-950 border-b border-slate-800 px-3 py-2 flex justify-center gap-2 sticky top-0 z-50">
+<button onclick="switchView('client')" id="btnClientView" class="px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5">
+<i class="fa-solid fa-mobile-screen-button"></i> شاشة اللاعب (العميل)
+</button>
+<button onclick="switchView('coach')" id="btnCoachView" class="px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5">
+<i class="fa-solid fa-user-gear"></i> لوحة المدرب (كابتن يونس)
+</button>
+</div>
+<!-- Header & Rest Timer -->
+<header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-11 z-40 px-4 py-3 flex justify-between items-center shadow-lg">
+<div class="flex items-center space-x-3 space-x-reverse">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center font-black text-slate-950 text-xl shadow-md">Y</div>
+<div>
+<h1 class="font-extrabold text-base text-white flex items-center gap-1.5">
+YounisCris Fit
+<span class="bg-emerald-500/15 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30">PRO</span>
+</h1>
+<p id="activeClientHeader" class="text-xs text-slate-400">اللاعب: <span class="text-emerald-400 font-bold">مصطفى حسين</span></p>
+</div>
+</div>
+<!-- Floating Rest Timer -->
+<div id="restTimerDisplay" class="hidden bg-amber-500/15 border border-amber-500 text-amber-400 px-3 py-1.5 rounded-full text-xs font-extrabold flex items-center space-x-2 space-x-reverse animate-pulse cursor-pointer" onclick="skipRestTimer()" title="اضغط لتخطي الراحة">
+<i class="fa-solid fa-stopwatch text-sm"></i>
+<div>
+<span class="text-[10px] block leading-none text-amber-300">وقت الراحة</span>
+<span id="timerCountdown" class="text-sm font-mono">01:30</span>
+</div>
+</div>
+</header>
+<!-- Toast Notification -->
+<div id="toastNotification" class="fixed top-28 left-1/2 -translate-x-1/2 z-50 hidden transform transition-all duration-300 w-11/12 max-w-md">
+<div class="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 px-5 py-3 rounded-2xl shadow-2xl font-extrabold text-xs flex items-center justify-center gap-2.5 border-2 border-white/20 text-center">
+<i class="fa-solid fa-trophy text-lg animate-bounce shrink-0"></i>
+<span id="toastMessage">وحش يا بطل! حطمت رقمك القياسي السابق 🔥</span>
+</div>
+</div>
+<!-- Hidden iframe for CORS-free Google Sheets submission -->
+<iframe name="hidden_sheets_iframe" id="hidden_sheets_iframe" class="hidden"></iframe>
+<!-- ========================================== -->
+<!-- 1. واجهة اللاعب (CLIENT VIEW)              -->
+<!-- ========================================== -->
+<main id="clientViewContainer" class="max-w-md mx-auto p-4 space-y-4">
+<div class="glass-card rounded-2xl p-4 shadow-xl border-t-2 border-t-emerald-500">
+<div class="flex justify-between items-center mb-3">
+<span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+<i class="fa-solid fa-chart-simple text-emerald-400"></i> ملخص حجم التمرين اليومي (Volume)
+</span>
+<span id="prCountBadge" class="bg-amber-500/20 border border-amber-500/40 text-amber-400 text-[11px] px-2.5 py-0.5 rounded-full font-extrabold">
+🏆 0 أرقام قياسية اليوم
+</span>
+</div>
+<div class="grid grid-cols-3 gap-2 text-center">
+<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+<span class="text-[11px] text-slate-400 block">الحجم الكلي (Volume)</span>
+<span id="totalVolumeKg" class="text-lg font-black text-emerald-400 font-mono">0</span>
+<span class="text-[10px] text-slate-500">كغ مرفوع</span>
+</div>
+<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+<span class="text-[11px] text-slate-400 block">الجولات المكتملة</span>
+<span id="completedSetsCount" class="text-lg font-black text-white font-mono">0 / 0</span>
+<span class="text-[10px] text-slate-500">جولة</span>
+</div>
+<div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+<span class="text-[11px] text-slate-400 block">نسبة الإنجاز</span>
+<span id="workoutProgressPct" class="text-lg font-black text-sky-400 font-mono">0%</span>
+<span class="text-[10px] text-slate-500">من التمرين</span>
+</div>
+</div>
+<div class="w-full bg-slate-800 h-2 rounded-full mt-3 overflow-hidden">
+<div id="workoutProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500" style="width: 0%"></div>
+</div>
+</div>
+<!-- Week & Day Selector -->
+<div class="glass-card rounded-2xl p-3.5 flex gap-2">
+<div class="w-1/2">
+<label class="text-[11px] text-slate-400 block mb-1 font-bold">الأسبوع التدريبي:</label>
+<select id="weekSelect" onchange="onDayOrWeekChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-bold focus:outline-none focus:border-emerald-500">
+<option value="1">الأسبوع الأول</option>
+<option value="2" selected>الأسبوع الثاني (الحالي)</option>
+<option value="3">الأسبوع الثالث</option>
+<option value="4">الأسبوع الرابع</option>
+</select>
+</div>
+<div class="w-1/2">
+<label class="text-[11px] text-slate-400 block mb-1 font-bold">جدول اليوم:</label>
+<select id="daySelect" onchange="onDayOrWeekChange()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-emerald-400 font-extrabold focus:outline-none focus:border-emerald-500">
+<!-- Populated dynamically -->
+</select>
+</div>
+</div>
+<!-- Dynamic Exercises Container -->
+<div id="exercisesList" class="space-y-4">
+<!-- Rendered dynamically -->
+</div>
+<!-- Finish Workout Button -->
+<div class="pt-2">
+<button onclick="openFinishWorkoutModal()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-4 rounded-2xl text-base shadow-xl shadow-emerald-500/20 transition transform active:scale-98 flex items-center justify-center gap-2.5 border border-emerald-300/40">
+<i class="fa-solid fa-flag-checkered text-lg"></i>
+<span>إنهاء التمرين وحفظ الأوزان</span>
+</button>
+</div>
+</main>
+<!-- ========================================== -->
+<!-- 2. لوحة تحكم المدرب (COACH VIEW)           -->
+<!-- ========================================== -->
+<main id="coachViewContainer" class="max-w-xl mx-auto p-4 space-y-5 hidden">
+<div class="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl">
+<h2 class="text-base font-black text-emerald-400 flex items-center gap-2">
+<i class="fa-solid fa-sliders"></i> لوحة تحكم كابتن يونس - إدارة الجداول والتمارين
+</h2>
+<p class="text-xs text-slate-300 mt-1">
+اختر العضلة، اختر التمرين من قاعدة البيانات الشاملة المدمجة، حدد الجولات، وكل بيانات اللاعبين تُرسل تلقائياً إلى شيت الكابتن.
+</p>
+</div>
+<!-- Step 1: Client & Link -->
+<div class="glass-card rounded-2xl p-4 space-y-3">
+<h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 text-xs flex items-center justify-center font-black">1</span>
+إدارة العميل والرابط الخاص به
+</h3>
+<div class="flex gap-2">
+<input id="newClientName" type="text" placeholder="اسم العميل الجديد (مثلاً: مصطفى العراقي)" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+<button onclick="addNewClient()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs transition whitespace-nowrap">
++ إنشاء شيت ورابط
+</button>
+</div>
+<div class="pt-2 border-t border-slate-800">
+<label class="text-xs text-slate-400 block mb-1">العميل المحدد حالياً لتعديل جدوله:</label>
+<select id="coachClientSelect" onchange="updateClientLinkPreview()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-emerald-400 font-bold">
+<option value="ahmed_99">أحمد محمد (Sheet Tab: جدول_أحمد_محمد)</option>
+<option value="saif_88">سيف علي (Sheet Tab: جدول_سيف_علي)</option>
+</select>
+</div>
+<div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+<div class="overflow-hidden">
+<span class="text-[10px] text-slate-400 block">رابط العميل الخاص:</span>
+<code id="clientUniqueUrl" class="text-xs text-emerald-400 font-mono truncate block">https://youniscris.com/#client=ahmed_99</code>
+</div>
+<button onclick="copyClientLink()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-2 rounded-lg font-bold flex items-center gap-1.5 shrink-0 border border-slate-700">
+<i class="fa-regular fa-copy"></i> نسخ الرابط
+</button>
+</div>
+</div>
+<!-- Step 2: Day & Exercise Builder -->
+<div class="glass-card rounded-2xl p-4 space-y-4 border border-emerald-500/30">
+<div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
+<h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-emerald-500 text-slate-950 text-xs flex items-center justify-center font-black">2</span>
+تخصيص الأيام والتمارين من (DATA BASE)
+</h3>
+<button onclick="toggleQuickAddExerciseBox()" class="bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition flex items-center gap-1.5">
+<i class="fa-solid fa-folder-plus"></i>
+<span>+ إضافة تمرين جديد للـ DATA BASE</span>
+</button>
+</div>
+<!-- Quick Add DB Box -->
+<div id="quickAddDbBox" class="hidden bg-slate-950/95 border border-amber-500/50 rounded-2xl p-3.5 space-y-3 shadow-xl">
+<div class="flex justify-between items-center">
+<span class="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+<i class="fa-solid fa-database"></i> إضافة تمرين جديد إلى قاعدة البيانات
+</span>
+<button onclick="toggleQuickAddExerciseBox()" class="text-slate-400 hover:text-white text-xs font-bold px-2">✕</button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">اختر القسم (العضلة):</label>
+<select id="newDbMuscleSelect" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-bold">
+<!-- Populated dynamically -->
+</select>
+</div>
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">اسم التمرين الجديد:</label>
+<input id="newDbExName" type="text" placeholder="مثلاً: Cable Fly" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-bold">
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">رابط الفيديو (YouTube):</label>
+<input id="newDbExVideo" type="text" placeholder="https://youtube.com/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-slate-300 font-mono" dir="ltr">
+</div>
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">ملاحظات الأداء:</label>
+<input id="newDbExNotes" type="text" placeholder="مثلاً: نزول بطيء وتحكم كامل..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white">
+</div>
+</div>
+<div class="flex justify-end gap-2">
+<button onclick="saveNewExerciseToDatabase()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition flex items-center gap-1.5">
+<i class="fa-solid fa-check"></i> حفظ التمرين في الـ DATA BASE
+</button>
+</div>
+</div>
+<!-- Day Selector & Creator with Delete Option -->
+<div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2.5">
+<div class="flex justify-between items-center flex-wrap gap-2">
+<label class="text-xs font-extrabold text-emerald-400">اختر اليوم لتعديل تمارينه:</label>
+<div class="flex gap-1.5">
+<button onclick="deleteCurrentTrainingDay()" class="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-2.5 py-1 rounded-lg font-bold hover:bg-red-500/25 transition">
+<i class="fa-solid fa-trash-can"></i> حذف هذا اليوم تماماً
+</button>
+<button onclick="clearCurrentDayExercises()" class="text-[10px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg font-bold hover:bg-amber-500/25 transition">
+<i class="fa-solid fa-eraser"></i> تصفير تمارين هذا اليوم
+</button>
+</div>
+</div>
+<select id="coachTargetDaySelect" onchange="onCoachDayChange()" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-bold">
+<!-- Populated dynamically -->
+</select>
+<div class="flex gap-2 pt-1">
+<input id="newCustomDayTitle" type="text" placeholder="أو اكتب اسم يوم جديد (مثلاً: اليوم الرابع - ذراع كامل)" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
+<button onclick="addNewTrainingDay()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/40 font-extrabold px-3 py-2 rounded-xl text-xs whitespace-nowrap">
++ إضافة يوم جديد
+</button>
+</div>
+</div>
+<!-- Exercise Builder Form -->
+<div class="space-y-3 pt-1">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+<div>
+<label class="text-[11px] text-emerald-400 font-extrabold block mb-1">
+<i class="fa-solid fa-dumbbell"></i> 1. اختر قسم العضلة:
+</label>
+<select id="coachMuscleSelect" onchange="onCoachMuscleChange()" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-white font-extrabold cursor-pointer">
+<!-- Populated dynamically -->
+</select>
+</div>
+<div>
+<label class="text-[11px] text-amber-400 font-extrabold block mb-1">
+<i class="fa-solid fa-list-check"></i> 2. اختر التمرين الأساسي:
+</label>
+<select id="coachExerciseSelect" onchange="onCoachExerciseSelectChange()" class="w-full bg-slate-950 border border-emerald-500/60 rounded-xl p-2.5 text-xs text-emerald-300 font-black cursor-pointer">
+<!-- Populated dynamically -->
+</select>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-2">
+<div>
+<label class="text-[10px] text-emerald-400 font-bold block mb-1">عدد الجولات:</label>
+<input id="coachSetsCount" type="number" min="1" max="10" value="3" class="w-full bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-xs text-center font-black text-white">
+</div>
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">المدى التكراري:</label>
+<input id="coachTargetReps" type="text" value="8-12" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-center text-white">
+</div>
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">الوزن المبدئي:</label>
+<input id="coachInitWeight" type="number" value="20" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-center text-white">
+</div>
+<div>
+<label class="text-[10px] text-slate-400 block mb-1">الراحة (ثانية):</label>
+<input id="coachRestSec" type="number" value="90" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-center text-white">
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">ملاحظة الأداء:</label>
+<input id="coachExNotes" type="text" value="تحكم كامل بالوزن ونزول بطيء 2 ثانية." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white">
+</div>
+<div>
+<label class="text-[11px] text-slate-400 block mb-1">رابط فيديو التمرين:</label>
+<input id="coachExVideo" type="text" value="https://youtu.be/sopilXEBQxA" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-slate-300 font-mono" dir="ltr">
+</div>
+</div>
+<div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2">
+<div class="flex justify-between items-center">
+<label class="text-[11px] text-amber-400 font-bold flex items-center gap-1.5">
+<i class="fa-solid fa-repeat"></i> التمارين البديلة المسموحة من نفس العضلة:
+</label>
+<button type="button" onclick="toggleAllMuscleAlts(true)" class="text-[10px] text-emerald-400 hover:underline font-bold">تحديد الكل</button>
+</div>
+<div id="coachMuscleAltsCheckboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-1 text-xs">
+<!-- Checkboxes populated dynamically -->
+</div>
+</div>
+<button onclick="addExerciseFromCoach()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg transition flex items-center justify-center gap-2">
+<i class="fa-solid fa-plus-circle text-sm"></i>
+<span>إدراج التمرين وجولاته في هذا اليوم</span>
+</button>
+</div>
+<div class="pt-3 border-t border-slate-800 space-y-2">
+<div class="flex justify-between items-center">
+<span class="text-xs font-extrabold text-slate-300">التمارين المضافة لهذا اليوم:</span>
+<span id="coachDayExCount" class="text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">0 تمارين</span>
+</div>
+<div id="coachCurrentDayExercisesList" class="space-y-2">
+<!-- Rendered dynamically -->
+</div>
+</div>
+</div>
+<!-- Step 3: Google Sheets Web App URL -->
+<div class="glass-card rounded-2xl p-4 space-y-3 border border-sky-500/30">
+<h3 class="text-sm font-extrabold text-sky-400 flex items-center gap-2">
+<i class="fa-solid fa-link"></i> ربط رابط الـ Web App مع التطبيق
+</h3>
+<div class="flex gap-2">
+<input id="gasUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs text-emerald-300 font-mono" dir="ltr">
+<button onclick="saveGasUrl()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-extrabold px-4 py-2 rounded-xl text-xs transition">
+حفظ الرابط
+</button>
+</div>
+</div>
+</main>
+<!-- Video Modal -->
+<div id="videoModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+<div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+<div class="p-3.5 bg-slate-950 flex justify-between items-center border-b border-slate-800">
+<span id="videoModalTitle" class="text-xs font-extrabold text-emerald-400">شرح أداء التمرين بالفيديو</span>
+<button onclick="closeVideoModal()" class="w-7 h-7 rounded-lg bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">✕</button>
+</div>
+<div class="p-6 text-center space-y-4 bg-slate-950">
+<div class="w-16 h-16 bg-red-600/20 border border-red-500/40 text-red-500 rounded-2xl flex items-center justify-center mx-auto text-3xl">
+<i class="fa-brands fa-youtube"></i>
+</div>
+<div>
+<h4 class="text-sm font-extrabold text-white">مشاهدة شرح التمرين على يوتيوب</h4>
+<p class="text-[11px] text-slate-400 mt-1">اضغط بالأسفل لفتح الفيديو مباشرة:</p>
+</div>
+<a id="externalVideoLink" href="#" target="_blank" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl text-xs shadow-lg flex items-center justify-center gap-2 transition">
+<i class="fa-brands fa-youtube text-base"></i>
+<span>فتح الفيديو في يوتيوب ↗</span>
+</a>
+</div>
+<div class="p-3 bg-slate-900 border-t border-slate-800 text-center">
+<button onclick="closeVideoModal()" class="text-xs text-slate-400 hover:text-white font-bold">إغلاق النافذة</button>
+</div>
+</div>
+</div>
+<!-- Alternatives Modal -->
+<div id="altModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl overflow-hidden shadow-2xl p-4 space-y-3">
+<div class="flex justify-between items-center border-b border-slate-800 pb-2.5">
+<div>
+<h4 class="text-sm font-extrabold text-white flex items-center gap-1.5">
+<i class="fa-solid fa-repeat text-amber-400"></i> اختر التمرين البديل المتاح لك
+</h4>
+<p class="text-[11px] text-slate-400">بدائل معتمدة من كابتن يونس لنفس العضلة المستهدفة</p>
+</div>
+<button onclick="closeAltModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2">✕</button>
+</div>
+<div id="altOptionsList" class="space-y-2">
+<!-- Populated dynamically -->
+</div>
+</div>
+</div>
+<!-- Finish Workout Modal -->
+<div id="finishWorkoutModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+<div class="bg-slate-900 border-2 border-emerald-500/60 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl p-5 space-y-4 text-center animate-fade-in">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-slate-950 flex items-center justify-center mx-auto text-3xl shadow-lg shadow-emerald-500/30">
+🏆
+</div>
+<div>
+<h3 class="font-black text-xl text-white">عاشت إيدك يا بطل! 🔥💪</h3>
+<p class="text-xs text-slate-300 mt-1">أنهيت تمرين <span id="modalFinishedDayName" class="text-emerald-400 font-bold">اليوم</span> بحجم تدريبي <span id="modalFinishedVolume" class="text-amber-400 font-mono font-extrabold">0</span> كغ</p>
+<p class="text-[11px] text-slate-400 mt-1">اختر تقييمك للتمرين ليُرسل مباشرة إلى شيت الكابتن وننتقل لتمرين الغد:</p>
+</div>
+<div class="grid grid-cols-4 gap-2 text-center pt-1">
+<button onclick="selectMood(this, 'سهل جداً 😎')" class="mood-btn bg-slate-950 border border-slate-700 hover:border-emerald-400 rounded-2xl p-2.5 transition flex flex-col items-center">
+<span class="text-2xl mb-1">😎</span>
+<span class="text-[11px] font-bold text-slate-200">سهل جداً</span>
+<span class="text-[9px] text-slate-500">أگدر أزيد</span>
+</button>
+<button onclick="selectMood(this, 'ممتاز ومناسب 💪')" class="mood-btn border-emerald-400 bg-emerald-500/20 scale-105 border rounded-2xl p-2.5 transition flex flex-col items-center">
+<span class="text-2xl mb-1">💪</span>
+<span class="text-[11px] font-bold text-slate-200">ممتاز</span>
+<span class="text-[9px] text-slate-500">جهد مثالي</span>
+</button>
+<button onclick="selectMood(this, 'قوي وصعب 🔥')" class="mood-btn bg-slate-950 border border-slate-700 hover:border-amber-400 rounded-2xl p-2.5 transition flex flex-col items-center">
+<span class="text-2xl mb-1">🔥</span>
+<span class="text-[11px] font-bold text-slate-200">قوي وصعب</span>
+<span class="text-[9px] text-slate-500">وصلت للفشل</span>
+</button>
+<button onclick="selectMood(this, 'مرهق جداً 🥵')" class="mood-btn bg-slate-950 border border-slate-700 hover:border-red-400 rounded-2xl p-2.5 transition flex flex-col items-center">
+<span class="text-2xl mb-1">🥵</span>
+<span class="text-[11px] font-bold text-slate-200">مرهق جداً</span>
+<span class="text-[9px] text-slate-500">طاقتي خلصت</span>
+</button>
+</div>
+<textarea id="clientWorkoutNote" rows="2" placeholder="ملاحظة سريعة للكابتن (اختياري)..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"></textarea>
+<div class="flex gap-2 pt-1">
+<button onclick="closeFinishWorkoutModal()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition">
+رجوع للتمرين
+</button>
+<button onclick="confirmAndAdvanceNextDay()" class="w-2/3 bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2">
+<i class="fa-solid fa-paper-plane"></i>
+<span>إرسال والانتقال لتمرين الغد</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+// Comprehensive Exercise Database extracted directly from Coach Younis Google Sheets data
+const coachDatabase = {
+'ارداف (Glutes)': [
+{ name: 'Hip Thrust', videoUrl: 'https://youtu.be/sopiLxEBgXA', notes: 'ثبات 1 ثانية فوق و نزول بطيء 2 ثانية' },
+{ name: 'Hip Thrust Db', videoUrl: 'https://youtu.be/LxdfGyNBuRU?si', notes: '' },
+{ name: 'DB Weighted Hip Thrust', videoUrl: 'https://youtu.be/T4P0SDrJZl4?si', notes: '' },
+{ name: 'Single Leg DB Hip Thrust', videoUrl: 'https://youtu.be/L4nTaesNm0E?si', notes: '' },
+{ name: 'Barbell Glute Bridge', videoUrl: 'https://youtu.be/MkT0fqg0a8Q?si', notes: 'اذا لا يتوفر البار ممكن استخدام الدامبل نفس الحركة' },
+{ name: 'glute bridge db,band', videoUrl: 'https://www.youtube.com/watch?v=2jV4c25UNvY', notes: '' },
+{ name: 'Glute Bridge free weight', videoUrl: 'https://youtu.be/up-zUo309Ds?si=gXMBpGpmM5TmVCe0', notes: '' },
+{ name: 'box Glute Bridge', videoUrl: 'https://youtu.be/o7Bqn-X9S4w', notes: '' },
+{ name: 'single leg box Glute Bridge', videoUrl: 'https://youtu.be/7CARYETadCQ', notes: '' },
+{ name: 'Glute kickback band', videoUrl: 'https://youtu.be/rONpWaNIhE8?si', notes: '' },
+{ name: 'Glute kickback band 2', videoUrl: 'https://youtube.com/shorts/qk4NakSAPb4?si=iW-leSbtZb6W5HoK', notes: 'دفع للاخير و نزول بطيئ' },
+{ name: 'frog pumps', videoUrl: 'https://www.youtube.com/watch?v=KvdJEqifOLk', notes: 'مع وزن' },
+{ name: 'spread eagle reverse hyper', videoUrl: 'https://www.youtube.com/watch?v=NzQL9Hw9kQA', notes: '' },
+{ name: 'standing band pull-through', videoUrl: 'https://www.youtube.com/watch?v=asHOAGfTX2I', notes: '' },
+{ name: 'CABLE HIP ABDUCTION', videoUrl: 'https://youtu.be/ak2-ZlJwRkg?si=4Q4M8M3eGS6v5eZC&t=41', notes: '' },
+{ name: 'Knee-Banded Hip Abduction', videoUrl: 'https://www.youtube.com/watch?v=MROC2iX1tEY', notes: '' },
+{ name: 'EXTRA SIDE-LYING HIP AB', videoUrl: 'https://www.youtube.com/watch?v=QZjSl8DCjx0', notes: '' },
+{ name: 'Band Side Lying Clam', videoUrl: 'https://www.youtube.com/shorts/JxaBTjnQWzs', notes: '' },
+{ name: 'band Quadruped Hip (kick)', videoUrl: 'https://www.youtube.com/watch?v=E-Df1V-UP7g', notes: '' },
+{ name: 'banded quadruped kickback', videoUrl: 'https://www.youtube.com/watch?v=Yq9RBMHn5K8', notes: '' },
+{ name: 'Lying Plate Abduction', videoUrl: 'https://www.youtube.com/shorts/XkDcRxS9slI', notes: '' }
+],
+'رجل أمامي وخلفي (Legs)': [
+{ name: 'hack squat db', videoUrl: 'https://youtu.be/uSjl4Bswc-A?si', notes: 'نزول ٣ ثواني ثبات ١ ثانية تحت صعود سريع' },
+{ name: 'band Lying leg curls', videoUrl: 'https://youtu.be/LtTcXXgeRYo?si', notes: '' },
+{ name: 'Stiff deadlift', videoUrl: 'https://youtu.be/DTv2HHzIsdE', notes: 'نزول ٣ ثواني ثبات ١ ثانية تحت صعود سريع' },
+{ name: 'Romanian deadlift db', videoUrl: 'https://youtu.be/dgdxrmXJE6I', notes: 'نزول ٣ ثواني ثبات ١ ثانية تحت صعود سريع' },
+{ name: 'Dumbbell split squat', videoUrl: 'https://youtu.be/Wcmg-3iHwjQ', notes: 'رجل واسع' },
+{ name: 'Db leg extension', videoUrl: 'https://youtu.be/-4hND41_b1g?si', notes: '' },
+{ name: 'db Goblet Squat', videoUrl: 'https://youtu.be/CkFzgR55gho?si', notes: '' },
+{ name: 'Barbell Squat', videoUrl: 'https://youtu.be/H6a-9IeyxPQ?si', notes: '' },
+{ name: 'Front Barbell Squat', videoUrl: 'https://youtu.be/3t6MmXvlTpY?si', notes: '' },
+{ name: 'Bar Split Squat', videoUrl: 'https://youtu.be/jNihW0WDIL4', notes: '' },
+{ name: 'db sumo squads', videoUrl: 'https://youtube.com/shorts/ujcKuLByly4?si', notes: '' },
+{ name: 'Step ups', videoUrl: 'https://youtube.com/shorts/PP045r5KHSs?si=JV5v8ZozoLE7xWjf', notes: '' },
+{ name: 'Banded Leg Extension', videoUrl: 'https://www.youtube.com/shorts/i0fLhf4DVZs', notes: '' },
+{ name: 'wall sit', videoUrl: 'https://www.youtube.com/shorts/mDdLC-yKudY', notes: '' },
+{ name: 'leg extension db', videoUrl: 'https://youtu.be/-32E6fnVn04', notes: '' },
+{ name: 'bulgarian split squat db', videoUrl: 'https://www.youtube.com/shorts/uBSoEWZu07k', notes: '' },
+{ name: 'Deficit Reverse Lungeb', videoUrl: 'https://www.youtube.com/watch?v=BDtm4dYSY_s', notes: '' },
+{ name: 'band deadlift', videoUrl: 'https://youtu.be/G4k24sQn2DA', notes: '' },
+{ name: 'deadlift bar', videoUrl: 'https://youtu.be/y3wd8el2gvU', notes: '' },
+{ name: 'Isometric Hold Leg Extension', videoUrl: 'https://www.youtube.com/shorts/bi7mmkPuboc', notes: '' },
+{ name: 'Banded Terminal Knee Extension', videoUrl: 'https://www.youtube.com/watch?v=xdKm8PSX438', notes: '' },
+{ name: 'lying db leg curls', videoUrl: 'https://www.youtube.com/watch?v=QwK97FU9fII', notes: '' },
+{ name: 'Barbell Good Morning', videoUrl: 'https://youtu.be/SKRoOby6ODg?si', notes: '' }
+],
+'صدر (Chest)': [
+{ name: 'Dumbbell Bench Press', videoUrl: 'https://youtu.be/YQ2s_Y7g5Qk?si', notes: 'نزول ببطء بمستوى الصدر ودفع للأعلى بدون قفل المرفق' },
+{ name: 'Barbell Bench Press', videoUrl: 'https://youtu.be/1WSG7XtR2zI', notes: 'تثبيت لوحي الكتف على البنش والتحكم بالبار' },
+{ name: 'Incline Dumbbell Press', videoUrl: 'https://youtu.be/kNnC9wWAGOQ', notes: 'زاوية البنش 30 درجة لاستهداف الصدر العلوي' },
+{ name: 'Barbell Incline Bench Press', videoUrl: 'https://youtu.be/qTzQVlVfhsQ', notes: '' },
+{ name: 'Decline PushUp', videoUrl: 'https://youtu.be/QuaOc1mFcqs', notes: '' },
+{ name: 'Incline Dumbbell Flyes', videoUrl: 'https://youtu.be/sHCg4QIw1uQ', notes: '' },
+{ name: 'Pushups', videoUrl: 'https://youtu.be/a0DW5BbqYXE', notes: '' },
+{ name: 'Dumbbell Flyes', videoUrl: 'https://youtu.be/tqSTDQ5vvgI?si', notes: '' },
+{ name: 'Dumbbell Floor Press', videoUrl: 'https://www.youtube.com/watch?v=T0Y3OBF1bNI', notes: '' },
+{ name: 'Incline Cable Bench Press', videoUrl: 'https://youtu.be/sopilXEBQxA', notes: '' }
+],
+'ظهر (Back)': [
+{ name: 'underhand band Pulldowns', videoUrl: 'https://youtu.be/7462SEmd8tU?si', notes: '' },
+{ name: 'Banded lat Pulldown', videoUrl: 'https://youtu.be/rwJkOgpNALg?si', notes: '' },
+{ name: 'Dumbbell incline row', videoUrl: 'https://youtu.be/QRhgLqiTq3g', notes: '' },
+{ name: 'band seated Rows', videoUrl: 'https://youtu.be/Jy-WCFAofBY?si', notes: '' },
+{ name: 'Barbell Rows', videoUrl: 'https://youtu.be/DosM_HIIRSY', notes: '' },
+{ name: 'Inverted Row', videoUrl: 'https://youtu.be/KOaCM1HMwU0', notes: '' },
+{ name: 'Barbell Row to Chest', videoUrl: 'https://youtu.be/UPGuwx7GQ9s', notes: '' },
+{ name: 'Single Db arm Row', videoUrl: 'https://youtu.be/DMo3HJoawrU?si', notes: '' },
+{ name: 'Single Db arm Row at home', videoUrl: 'https://www.youtube.com/watch?v=zYUTvg3K1mE', notes: '' },
+{ name: 'SEATED Dumbbell row', videoUrl: 'https://www.youtube.com/watch?v=8x5HqIuK28g', notes: '' },
+{ name: 'Standing Dumbbell row', videoUrl: 'https://www.youtube.com/watch?v=5PoEksoJNaw', notes: '' },
+{ name: 'Single-Arm High Pulley Row', videoUrl: 'https://www.youtube.com/watch?v=M2wl4x2HbDk', notes: '' },
+{ name: 'Straight-Arm Pulldown', videoUrl: 'https://www.youtube.com/watch?v=y1Ogt8t71e4', notes: '' },
+{ name: 'Seated Band Low Row', videoUrl: 'https://www.youtube.com/watch?v=bk0fvTojz_4', notes: '' },
+{ name: 'Reverse Flyes band', videoUrl: 'https://www.youtube.com/watch?v=PtKAtOXVbYU', notes: '' }
+],
+'بايسبس (Biceps)': [
+{ name: 'DB twisting curl', videoUrl: 'https://youtu.be/-uzFEez9_7w?si', notes: '' },
+{ name: 'Alternate incline db curl', videoUrl: 'https://youtu.be/aTYlqC_JacQ', notes: '' },
+{ name: 'Incline Dumbbell Curl', videoUrl: 'https://youtu.be/aTYlqC_JacQ', notes: '' },
+{ name: 'barbell biceps', videoUrl: 'https://youtu.be/jpAgbw6GpZ0', notes: '' },
+{ name: 'EZ Bar Spider Curl', videoUrl: 'https://youtu.be/WG3vdcq__I0', notes: '' },
+{ name: 'Dumbbell Spider Curl', videoUrl: 'https://youtu.be/ke2shAeQ0O8', notes: '' },
+{ name: 'one arm dumbbell preacher 2', videoUrl: 'https://www.youtube.com/shorts/RT5LFzBUvno', notes: '' },
+{ name: 'Seated Dumbbell Curl', videoUrl: 'https://youtu.be/Kb4QEdRHWRI?si', notes: '' },
+{ name: 'Incline Hammer Curls', videoUrl: 'https://youtu.be/OCNSPJY1NmQ?si', notes: '' },
+{ name: 'EZ-Bar Curl', videoUrl: 'https://youtu.be/Xgs4hj_dfE4?si', notes: '' },
+{ name: 'Alternate Hammer Curl', videoUrl: 'https://youtu.be/dfI1LYCc2k0?si', notes: '' },
+{ name: 'Standing Biceps Cable Curl', videoUrl: 'https://youtu.be/2lFa62Q6wx0?si', notes: '' },
+{ name: 'One Arm Dumbbell Preacher', videoUrl: 'https://youtu.be/ND655s2W36U?si', notes: '' },
+{ name: 'Dumbbell Alternate Bicep Curl', videoUrl: 'https://youtu.be/ZXohULBZIDY?si', notes: '' },
+{ name: 'Zottman Curls', videoUrl: 'https://youtu.be/I6FuICypVAM?si', notes: '' },
+{ name: 'Dumbbell Twist Curl', videoUrl: 'https://youtu.be/1WmFOcXM86Y?si', notes: '' },
+{ name: 'Incline Dumbbell Curls (no bench)', videoUrl: 'https://www.youtube.com/watch?v=uHhPivwBVjY', notes: '' },
+{ name: 'بار سواعد', videoUrl: 'https://youtu.be/lfQR7oVS8eo', notes: '' }
+],
+'ترايسبس (Triceps)': [
+{ name: 'band Triceps pushdown', videoUrl: 'https://youtu.be/dzfxVf-IOSE?si', notes: '' },
+{ name: 'Lying dumbbell triceps extension', videoUrl: 'https://youtu.be/n2V14q2CEnI', notes: '' },
+{ name: 'Skull crusher', videoUrl: 'https://youtu.be/nupihrTfe60?si', notes: '' },
+{ name: 'Seated Triceps Press', videoUrl: 'https://youtu.be/yXlcLW4wLdU?si', notes: '' },
+{ name: 'Triceps pushdown Rope', videoUrl: 'https://youtu.be/sopilXEBQxA', notes: '' },
+{ name: 'Dumbbell One-Arm Triceps', videoUrl: 'https://youtu.be/hHLyOAVtPJk?si', notes: '' }
+],
+'اكتاف (Shoulders)': [
+{ name: 'DB Standing Lateral Raises', videoUrl: 'https://youtu.be/x2fGq9vkXlc?si', notes: '' },
+{ name: 'Dumbbell Press', videoUrl: 'https://youtu.be/yQI6TOgNM20?si', notes: '' },
+{ name: 'DB Seated Lateral Raise', videoUrl: 'https://youtu.be/UBx6cwLrsEE', notes: '' },
+{ name: 'Barbell Upright Row', videoUrl: 'https://youtu.be/um3VVzqunPU', notes: '' },
+{ name: 'Incline Reverse Dumbbell Fly', videoUrl: 'https://youtu.be/rSqn46qjuXU', notes: '' },
+{ name: 'Seated DB Rear Delt', videoUrl: 'https://youtu.be/-icNKZuPIvU?si', notes: '' },
+{ name: 'standing DB Rear Delt', videoUrl: 'https://www.youtube.com/watch?v=zMRfQuGHnrg', notes: '' },
+{ name: 'Barbell Row to Chest', videoUrl: 'https://youtu.be/UPGuwx7GQ9s', notes: '' },
+{ name: 'Y Raise', videoUrl: 'https://www.youtube.com/watch?v=nvGTvUiaEOs', notes: '' }
+],
+'كولف (Calves)': [
+{ name: 'Standing calf raises', videoUrl: 'https://youtu.be/jfKTT_hr8bk?si', notes: '' },
+{ name: 'seated calf raises', videoUrl: 'https://youtu.be/3ZRe_QpvRPg?si', notes: '' }
+],
+'بطن (Abs)': [
+{ name: 'band crunch', videoUrl: 'https://youtu.be/imWlkp8w1I4?si', notes: '' },
+{ name: 'Plank', videoUrl: 'https://youtu.be/Q20K8nwbxN0', notes: '' },
+{ name: 'Decline Leg Raise', videoUrl: 'https://youtu.be/hKii-SQ-hjc', notes: '' },
+{ name: 'Side plank', videoUrl: 'https://youtube.com/shorts/jdhD50_xdnU?feature', notes: '' },
+{ name: 'V-UP', videoUrl: 'https://youtube.com/shorts/DfLIWyEt-Nk?feature', notes: '' },
+{ name: 'Ab Triset', videoUrl: 'https://www.youtube.com/watch?v=9s2Or2zV4QU', notes: 'تطبيق تمرين ال 1-2 فقط 3 ترك' }
+],
+'اصابات ظهر & ركبة (Rehab)': [
+{ name: 'diastasis recti', videoUrl: 'https://youtu.be/o9xBkgskDx4?si', notes: '' },
+{ name: 'LAYING KNEE PULLS', videoUrl: 'https://youtube.com/shorts/-qzPXhVGfMc?si', notes: '' },
+{ name: 'LAYING KNEE PULLS 2', videoUrl: 'https://youtube.com/shorts/7-AMiup60FQ?si', notes: '' }
+],
+'مثلثات (Traps)': [
+{ name: 'Barbell Bent Shrug', videoUrl: 'https://youtu.be/d9daNDIXtK8', notes: '' },
+{ name: 'Dumbbell Shrug', videoUrl: 'https://youtu.be/_t3lrPI6Ns4?si', notes: '' }
+]
+};
+// Default Training Schedule
+const scheduleData = {
+'d1': {
+title: 'اليوم الأول (أرداف & رجل)',
+exercises: [
+{
+id: 'd1_ex1',
+order: 1,
+currentName: 'Hip Thrust',
+muscle: 'ارداف (Glutes)',
+targetReps: '4-8',
+restSeconds: 90,
+videoUrl: 'https://youtu.be/sopiLxEBgXA',
+notes: 'ثبات 1 ثانية فوق و نزول بطيء 2 ثانية',
+alternatives: [
+{ name: 'Hip Thrust (التمرين الأساسي)', videoUrl: 'https://youtu.be/sopiLxEBgXA', notes: 'ثبات 1 ثانية فوق' },
+{ name: 'band Lying leg curls', videoUrl: 'https://youtu.be/LtTcXXgeRYo?si', notes: 'بديل معتمد' }
+],
+sets: [
+{ setNum: 1, prevWeight: 50, prevReps: 8, curWeight: '', curReps: '', completed: false, isPR: false },
+{ setNum: 2, prevWeight: 55, prevReps: 6, curWeight: '', curReps: '', completed: false, isPR: false }
+]
+}
+]
+},
+'d2': {
+title: 'اليوم الثاني (ظهر & بايسبس)',
+exercises: [
+{
+id: 'd2_ex1',
+order: 1,
+currentName: 'underhand band Pulldowns',
+muscle: 'ظهر (Back)',
+targetReps: '8-12',
+restSeconds: 90,
+videoUrl: 'https://youtu.be/7462SEmd8tU?si',
+notes: 'تحكم كامل بالمدى الحركي.',
+alternatives: [
+{ name: 'underhand band Pulldowns (التمرين الأساسي)', videoUrl: 'https://youtu.be/7462SEmd8tU?si', notes: '' }
+],
+sets: [
+{ setNum: 1, prevWeight: 30, prevReps: 12, curWeight: '', curReps: '', completed: false, isPR: false }
+]
+}
+]
+}
+};
+let currentDayKey = 'd1';
+let activeExerciseIndexForAlt = null;
+let selectedMoodText = 'ممتاز ومناسب 💪';
+let timerInterval = null;
+let googleScriptUrl = 'https://script.google.com/macros/s/AKfycbyu5rltuU6cr2yzE32bXGHIPJvT5LwOGlRtB136cFKa6LPndr2Ozx8M3UgOMRNZTqk/exec';
+const DOMAIN_URL = 'https://youniscris.com';
+window.addEventListener('DOMContentLoaded', () => {
+const hash = window.location.hash;
+if (hash.includes('client=')) {
+const clientSlug = hash.split('client=')[1];
+document.getElementById('coachClientSelect').value = clientSlug;
+switchView('client');
+}
+document.getElementById('gasUrlInput').value = googleScriptUrl;
+initCoachDatabaseSelectors();
+renderExercises();
+});
+function saveGasUrl() {
+const urlVal = document.getElementById('gasUrlInput').value.trim();
+if (urlVal) {
+googleScriptUrl = urlVal;
+localStorage.setItem('younis_gas_url', urlVal);
+showToast('✅ تم حفظ رابط الـ Google Sheets Web App بنجاح!');
+}
+}
+function getActiveExercises() {
+return scheduleData[currentDayKey] ? scheduleData[currentDayKey].exercises : [];
+}
+function syncDayDropdowns() {
+const clientDaySelect = document.getElementById('daySelect');
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+const currentCoachVal = coachDaySelect ? coachDaySelect.value : currentDayKey;
+if (clientDaySelect) clientDaySelect.innerHTML = '';
+if (coachDaySelect) coachDaySelect.innerHTML = '';
+const dayKeys = Object.keys(scheduleData);
+if (dayKeys.length === 0) {
+scheduleData['d_default'] = { title: 'اليوم الأول - تدريب عام', exercises: [] };
+currentDayKey = 'd_default';
+syncDayDropdowns();
+return;
+}
+if (!scheduleData[currentDayKey]) {
+currentDayKey = dayKeys[0];
+}
+dayKeys.forEach(dayKey => {
+const dayObj = scheduleData[dayKey];
+if (clientDaySelect) {
+const opt1 = document.createElement('option');
+opt1.value = dayKey;
+opt1.textContent = ⁠${dayObj.title} (${dayObj.exercises.length} تمارين)⁠;
+clientDaySelect.appendChild(opt1);
+}
+if (coachDaySelect) {
+const opt2 = document.createElement('option');
+opt2.value = dayKey;
+opt2.textContent = ⁠${dayObj.title} (${dayObj.exercises.length} تمارين)⁠;
+coachDaySelect.appendChild(opt2);
+}
+});
+if (clientDaySelect) clientDaySelect.value = currentDayKey;
+if (coachDaySelect && scheduleData[currentCoachVal]) {
+coachDaySelect.value = currentCoachVal;
+} else if (coachDaySelect) {
+coachDaySelect.value = currentDayKey;
+}
+}
+function onDayOrWeekChange() {
+currentDayKey = document.getElementById('daySelect').value;
+renderExercises();
+}
+function onCoachDayChange() {
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+if (coachDaySelect && coachDaySelect.value) {
+currentDayKey = coachDaySelect.value;
+renderCoachDaySummary();
+}
+}
+function renderExercises() {
+syncDayDropdowns();
+const container = document.getElementById('exercisesList');
+container.innerHTML = '';
+const exercisesData = getActiveExercises();
+if (exercisesData.length === 0) {
+container.innerHTML = ⁠<div class="glass-card rounded-2xl p-6 text-center space-y-2 border border-slate-800"> <i class="fa-solid fa-dumbbell text-2xl text-slate-500"></i> <p class="text-sm font-bold text-slate-300">لا توجد تمارين مضافة في هذا اليوم حالياً</p> <p class="text-xs text-slate-500">يمكن لكابتن يونس إضافة التمارين وجولاتها من لوحة المدرب.</p> </div>⁠;
+recalculateVolumeAndStats();
+renderCoachDaySummary();
+return;
+}
+exercisesData.forEach((ex, exIdx) => {
+let setsHtml = '';
+ex.sets.forEach((s, setIdx) => {
+const rowBg = s.completed
+? (s.isPR ? 'bg-amber-500/15 border border-amber-500/50 pr-glow' : 'bg-emerald-500/10 border border-emerald-500/30')
+: 'bg-slate-900/60 border border-slate-800/80';
+const btnClass = s.completed
+? (s.isPR ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-500/30' : 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30')
+: 'bg-slate-800 text-slate-400 hover:bg-slate-700';
+setsHtml += `
+<div class="grid grid-cols-12 items-center gap-1.5 text-center p-2 rounded-xl transition-all ${rowBg}">
+<div class="col-span-2 flex flex-col items-center">
+<span class="font-black text-xs text-white">#${s.setNum}</span>
+${s.isPR ? '<span class="text-[9px] bg-amber-400 text-slate-950 px-1.5 rounded font-black mt-0.5">🔥 PR</span>' : ''}
+</div>
+<div class="col-span-3 text-[11px] text-slate-400/75 font-mono bg-slate-950/60 py-1.5 rounded-lg border border-slate-800/60">
+${s.prevWeight}kg × ${s.prevReps}
+</div>
+<div class="col-span-5 flex gap-1">
+<div class="w-1/2 relative">
+<input type="number" step="0.5" value="${s.curWeight}" 
+oninput="updateInput(${exIdx}, ${setIdx}, 'weight', this.value)"
+placeholder="${s.prevWeight} كغ" 
+class="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-1 text-center text-xs font-bold text-white placeholder-slate-500/60 focus:outline-none focus:border-emerald-400">
+</div>
+<div class="w-1/2 relative">
+<input type="number" value="${s.curReps}" 
+oninput="updateInput(${exIdx}, ${setIdx}, 'reps', this.value)"
+placeholder="${s.prevReps} عدات" 
+class="w-full bg-slate-950 border border-slate-700 rounded-lg py-1.5 px-1 text-center text-xs font-bold text-white placeholder-slate-500/60 focus:outline-none focus:border-emerald-400">
+</div>
+</div>
+<div class="col-span-2 flex justify-center">
+<button onclick="toggleCompleteSet(${exIdx}, ${setIdx})" class="w-8 h-8 rounded-xl font-bold transition flex items-center justify-center ${btnClass}">
+<i class="fa-solid ${s.isPR ? 'fa-trophy' : 'fa-check'} text-xs"></i>
+</button>
+</div>
+</div>
+`;
+});
+const cardHtml = `
+<div class="glass-card rounded-2xl p-4 shadow-xl space-y-3.5 border-r-4 border-r-emerald-500">
+<div class="flex justify-between items-start gap-2">
+<div>
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-extrabold">تمرين {exIdx + 1}</span>
+<span class="bg-slate-800 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-bold">الهدف: ${ex.targetReps} تكرار</span>
+</div>
+<h2 class="text-lg font-black text-white mt-1.5">${ex.currentName}</h2>
+<p class="text-[11px] text-slate-400">{ex.muscle}</p>
+</div>
+<div class="flex flex-col gap-1.5 shrink-0">
+<button onclick="openVideoModal('${ex.videoUrl}', '${ex.currentName}')" class="bg-red-500/15 border border-red-500/40 text-red-400 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 hover:bg-red-500/25 transition">
+<i class="fa-brands fa-youtube text-sm"></i>
+<span>فيديو الشرح</span>
+</button>
+<button onclick="openAltModal(${exIdx})" class="bg-amber-500/15 border border-amber-500/40 text-amber-300 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold flex items-center justify-center gap-1.5 hover:bg-amber-500/25 transition">
+<i class="fa-solid fa-repeat text-xs"></i>
+<span>بديل (${Math.max(0, ex.alternatives.length - 1)})</span>
+</button>
+</div>
+</div>
+<div class="bg-slate-900/90 rounded-xl p-2.5 text-[11px] text-slate-300 border border-slate-800 flex items-start gap-2">
+<i class="fa-solid fa-circle-info text-emerald-400 mt-0.5"></i>
+<div><span class="font-bold text-emerald-400">ملاحظة:</span> ${ex.notes || 'تحكم كامل بالوزن'}</div>
+</div>
+<div class="space-y-2">
+<div class="grid grid-cols-12 text-center text-[10px] text-slate-400 font-bold pb-1 border-b border-slate-800">
+<div class="col-span-2">الجولة</div>
+<div class="col-span-3">السابق</div>
+<div class="col-span-5">الوزن / التكرار</div>
+<div class="col-span-2">تم ✓</div>
+</div>
+${setsHtml}
+</div>
+</div>
+`;
+container.insertAdjacentHTML('beforeend', cardHtml);
+});
+recalculateVolumeAndStats();
+renderCoachDaySummary();
+}
+function updateInput(exIdx, setIdx, field, val) {
+const exercisesData = getActiveExercises();
+if (field === 'weight') {
+exercisesData[exIdx].sets[setIdx].curWeight = val;
+} else {
+exercisesData[exIdx].sets[setIdx].curReps = val;
+}
+if (exercisesData[exIdx].sets[setIdx].completed) {
+checkPRStatus(exIdx, setIdx);
+recalculateVolumeAndStats();
+}
+}
+function checkPRStatus(exIdx, setIdx) {
+const exercisesData = getActiveExercises();
+const s = exercisesData[exIdx].sets[setIdx];
+const w = parseFloat(s.curWeight) || s.prevWeight;
+const r = parseInt(s.curReps) || s.prevReps;
+const prevVol = s.prevWeight * s.prevReps;
+const curVol = w * r;
+s.isPR = (w > s.prevWeight && r >= s.prevReps - 1) || (curVol > prevVol);
+}
+function toggleCompleteSet(exIdx, setIdx) {
+const exercisesData = getActiveExercises();
+const ex = exercisesData[exIdx];
+const s = ex.sets[setIdx];
+if (s.curWeight === '') s.curWeight = s.prevWeight;
+if (s.curReps === '') s.curReps = s.prevReps;
+s.completed = !s.completed;
+if (s.completed) {
+checkPRStatus(exIdx, setIdx);
+startRestTimer(ex.restSeconds);
+if (s.isPR) {
+showToast(⁠وحش يا بطل! حطمت رقمك السابق في ${ex.currentName} (${s.curWeight}kg × ${s.curReps}) 🏆🔥⁠);
+}
+} else {
+s.isPR = false;
+}
+renderExercises();
+}
+function recalculateVolumeAndStats() {
+const exercisesData = getActiveExercises();
+let totalVolume = 0;
+let totalSets = 0;
+let completedSets = 0;
+let prCount = 0;
+exercisesData.forEach(ex => {
+ex.sets.forEach(s => {
+totalSets++;
+if (s.completed) {
+completedSets++;
+const w = parseFloat(s.curWeight) || 0;
+const r = parseInt(s.curReps) || 0;
+totalVolume += (w * r);
+if (s.isPR) prCount++;
+}
+});
+});
+const pct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+document.getElementById('totalVolumeKg').textContent = totalVolume.toLocaleString();
+document.getElementById('completedSetsCount').textContent = ⁠${completedSets} / ${totalSets}⁠;
+document.getElementById('workoutProgressPct').textContent = ⁠${pct}%⁠;
+document.getElementById('workoutProgressBar').style.width = ⁠${pct}%⁠;
+document.getElementById('prCountBadge').textContent = ⁠🏆 ${prCount} أرقام قياسية اليوم⁠;
+}
+function openAltModal(exIdx) {
+const exercisesData = getActiveExercises();
+activeExerciseIndexForAlt = exIdx;
+const ex = exercisesData[exIdx];
+const list = document.getElementById('altOptionsList');
+list.innerHTML = '';
+ex.alternatives.forEach((alt, altIdx) => {
+const isSelected = ex.currentName === alt.name.split(' (')[0] || ex.currentName === alt.name;
+list.insertAdjacentHTML('beforeend', ⁠<div onclick="selectAlternative(${altIdx})" class="p-3 rounded-xl border cursor-pointer transition flex justify-between items-center ${isSelected ? 'bg-emerald-500/15 border-emerald-500' : 'bg-slate-950 border-slate-800 hover:border-slate-600'}"> <div> <div class="text-xs font-extrabold text-white">${alt.name}</div> <div class="text-[10px] text-slate-400 mt-0.5">${alt.notes}</div> </div> <span class="text-xs font-bold ${isSelected ? 'text-emerald-400' : 'text-amber-400'}"> ${isSelected ? 'محدد حالياً ✓' : 'اختيار'} </span> </div>⁠);
+});
+document.getElementById('altModal').classList.remove('hidden');
+}
+function selectAlternative(altIdx) {
+const exercisesData = getActiveExercises();
+const ex = exercisesData[activeExerciseIndexForAlt];
+const chosen = ex.alternatives[altIdx];
+ex.currentName = chosen.name;
+ex.videoUrl = chosen.videoUrl;
+ex.notes = chosen.notes;
+closeAltModal();
+renderExercises();
+}
+function closeAltModal() {
+document.getElementById('altModal').classList.add('hidden');
+}
+function openVideoModal(url, title) {
+let cleanUrl = url || 'https://www.youtube.com';
+if (cleanUrl.includes('youtu.be/')) {
+const parts = cleanUrl.split('youtu.be/');
+const id = parts[1].split('?')[0];
+cleanUrl = ⁠https://www.youtube.com/watch?v=${id}⁠;
+}
+document.getElementById('externalVideoLink').href = cleanUrl;
+document.getElementById('videoModalTitle').textContent = ⁠شرح تمرين: ${title}⁠;
+document.getElementById('videoModal').classList.remove('hidden');
+}
+function closeVideoModal() {
+document.getElementById('videoModal').classList.add('hidden');
+}
+function startRestTimer(seconds) {
+clearInterval(timerInterval);
+const display = document.getElementById('restTimerDisplay');
+const countdown = document.getElementById('timerCountdown');
+display.classList.remove('hidden');
+let timeLeft = seconds;
+const updateDisplay = () => {
+let mins = Math.floor(timeLeft / 60);
+let secs = timeLeft % 60;
+countdown.textContent = ⁠${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}⁠;
+};
+updateDisplay();
+timerInterval = setInterval(() => {
+timeLeft--;
+if (timeLeft < 0) {
+clearInterval(timerInterval);
+display.classList.add('hidden');
+} else {
+updateDisplay();
+}
+}, 1000);
+}
+function skipRestTimer() {
+clearInterval(timerInterval);
+document.getElementById('restTimerDisplay').classList.add('hidden');
+}
+function selectMood(btn, moodText) {
+selectedMoodText = moodText;
+document.querySelectorAll('.mood-btn').forEach(b => {
+b.classList.remove('border-emerald-400', 'bg-emerald-500/20', 'scale-105');
+b.classList.add('border-slate-700', 'bg-slate-950');
+});
+btn.classList.remove('border-slate-700', 'bg-slate-950');
+btn.classList.add('border-emerald-400', 'bg-emerald-500/20', 'scale-105');
+}
+function showToast(msg) {
+const toast = document.getElementById('toastNotification');
+document.getElementById('toastMessage').textContent = msg;
+toast.classList.remove('hidden');
+setTimeout(() => { toast.classList.add('hidden'); }, 3500);
+}
+function openFinishWorkoutModal() {
+const exercisesData = getActiveExercises();
+exercisesData.forEach((ex, exIdx) => {
+ex.sets.forEach((s, setIdx) => {
+if ((s.curWeight !== '' || s.curReps !== '') && !s.completed) {
+if (s.curWeight === '') s.curWeight = s.prevWeight;
+if (s.curReps === '') s.curReps = s.prevReps;
+s.completed = true;
+checkPRStatus(exIdx, setIdx);
+}
+});
+});
+renderExercises();
+const dayTitle = scheduleData[currentDayKey] ? scheduleData[currentDayKey].title : 'اليوم';
+const vol = document.getElementById('totalVolumeKg').textContent;
+document.getElementById('modalFinishedDayName').textContent = dayTitle;
+document.getElementById('modalFinishedVolume').textContent = vol;
+document.getElementById('finishWorkoutModal').classList.remove('hidden');
+}
+function closeFinishWorkoutModal() {
+document.getElementById('finishWorkoutModal').classList.add('hidden');
+}
+function confirmAndAdvanceNextDay() {
+closeFinishWorkoutModal();
+skipRestTimer();
+const exercisesData = getActiveExercises();
+const setsPayload = [];
+exercisesData.forEach(ex => {
+ex.sets.forEach(s => {
+if (s.completed) {
+setsPayload.push({
+exercise: ex.currentName,
+setNum: s.setNum,
+weight: parseFloat(s.curWeight) || s.prevWeight,
+reps: parseInt(s.curReps) || s.prevReps,
+isPR: s.isPR
+});
+}
+});
+});
+const clientSelect = document.getElementById('coachClientSelect');
+const clientNameClean = clientSelect ? clientSelect.options[clientSelect.selectedIndex].text.split(' (')[0] : 'مصطفى حسين';
+const weekNum = document.getElementById('weekSelect').value;
+const dayTitle = scheduleData[currentDayKey].title;
+const noteText = document.getElementById('clientWorkoutNote').value.trim();
+const payload = {
+clientName: clientNameClean,
+week: ⁠الأسبوع ${weekNum}⁠,
+day: dayTitle,
+mood: selectedMoodText,
+note: noteText,
+sets: setsPayload
+};
+if (googleScriptUrl) {
+const form = document.createElement('form');
+form.method = 'POST';
+form.action = googleScriptUrl;
+form.target = 'hidden_sheets_iframe';
+const input = document.createElement('input');
+input.type = 'hidden';
+input.name = 'data';
+input.value = JSON.stringify(payload);
+form.appendChild(input);
+document.body.appendChild(form);
+form.submit();
+document.body.removeChild(form);
+showToast('🚀 تم حفظ التمرين وإرساله لشيت الكابتن بنجاح!');
+} else {
+showToast('⚠️ تنبيه: لم يتم ربط رابط Google Sheets Web App.');
+}
+document.getElementById('clientWorkoutNote').value = '';
+const dayKeys = Object.keys(scheduleData);
+const currentIndex = dayKeys.indexOf(currentDayKey);
+const nextIndex = (currentIndex + 1) % dayKeys.length;
+currentDayKey = dayKeys[nextIndex];
+if (nextIndex === 0) {
+const weekSelect = document.getElementById('weekSelect');
+if (weekSelect.selectedIndex < weekSelect.options.length - 1) {
+weekSelect.selectedIndex += 1;
+}
+}
+renderExercises();
+window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function switchView(view) {
+const clientContainer = document.getElementById('clientViewContainer');
+const coachContainer = document.getElementById('coachViewContainer');
+const btnClient = document.getElementById('btnClientView');
+const btnCoach = document.getElementById('btnCoachView');
+if (view === 'client') {
+clientContainer.classList.remove('hidden');
+coachContainer.classList.add('hidden');
+btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
+btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
+renderExercises();
+} else {
+clientContainer.classList.add('hidden');
+coachContainer.classList.remove('hidden');
+btnCoach.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-500 text-slate-950 shadow transition flex items-center gap-1.5';
+btnClient.className = 'px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5';
+syncDayDropdowns();
+initCoachDatabaseSelectors();
+renderCoachDaySummary();
+}
+}
+function initCoachDatabaseSelectors() {
+const muscleSelect = document.getElementById('coachMuscleSelect');
+const newDbMuscleSelect = document.getElementById('newDbMuscleSelect');
+if (!muscleSelect) return;
+const currentSelectedMuscle = muscleSelect.value;
+muscleSelect.innerHTML = '';
+if (newDbMuscleSelect) newDbMuscleSelect.innerHTML = '';
+Object.keys(coachDatabase).forEach(muscleName => {
+const count = coachDatabase[muscleName].length;
+const opt = document.createElement('option');
+opt.value = muscleName;
+opt.textContent = ⁠${muscleName} (${count} تمارين)⁠;
+muscleSelect.appendChild(opt);
+if (newDbMuscleSelect) {
+const opt2 = document.createElement('option');
+opt2.value = muscleName;
+opt2.textContent = muscleName;
+newDbMuscleSelect.appendChild(opt2);
+}
+});
+if (currentSelectedMuscle && coachDatabase[currentSelectedMuscle]) {
+muscleSelect.value = currentSelectedMuscle;
+}
+onCoachMuscleChange();
+}
+function onCoachMuscleChange() {
+const muscleSelect = document.getElementById('coachMuscleSelect');
+const exSelect = document.getElementById('coachExerciseSelect');
+if (!muscleSelect || !exSelect) return;
+const selectedMuscle = muscleSelect.value;
+const exercisesList = coachDatabase[selectedMuscle] || [];
+exSelect.innerHTML = '';
+exercisesList.forEach((exObj, idx) => {
+const opt = document.createElement('option');
+opt.value = idx;
+opt.textContent = exObj.name;
+exSelect.appendChild(opt);
+});
+onCoachExerciseSelectChange();
+}
+function onCoachExerciseSelectChange() {
+const muscleSelect = document.getElementById('coachMuscleSelect');
+const exSelect = document.getElementById('coachExerciseSelect');
+const altsContainer = document.getElementById('coachMuscleAltsCheckboxes');
+if (!muscleSelect || !exSelect || !altsContainer) return;
+const selectedMuscle = muscleSelect.value;
+const exercisesList = coachDatabase[selectedMuscle] || [];
+const chosenIdx = parseInt(exSelect.value) || 0;
+const chosenEx = exercisesList[chosenIdx];
+if (chosenEx) {
+document.getElementById('coachExVideo').value = chosenEx.videoUrl || '';
+document.getElementById('coachExNotes').value = chosenEx.notes || '';
+}
+altsContainer.innerHTML = '';
+exercisesList.forEach((exObj, idx) => {
+if (idx === chosenIdx) return;
+const isChecked = idx <= 2 ? 'checked' : '';
+altsContainer.insertAdjacentHTML('beforeend', ⁠<label class="flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 px-2.5 py-1.5 rounded-lg cursor-pointer hover:border-emerald-500/40 transition"> <input type="checkbox" class="coach-alt-checkbox accent-emerald-500" value="${idx}" ${isChecked}> <span class="text-[11px] text-slate-200 font-bold truncate">${exObj.name}</span> </label>⁠);
+});
+}
+function toggleAllMuscleAlts(checkState) {
+document.querySelectorAll('.coach-alt-checkbox').forEach(cb => {
+cb.checked = checkState;
+});
+}
+function toggleQuickAddExerciseBox() {
+const box = document.getElementById('quickAddDbBox');
+box.classList.toggle('hidden');
+if (!box.classList.contains('hidden')) {
+document.getElementById('newDbMuscleSelect').value = document.getElementById('coachMuscleSelect').value;
+document.getElementById('newDbExName').focus();
+}
+}
+function saveNewExerciseToDatabase() {
+const targetMuscle = document.getElementById('newDbMuscleSelect').value;
+const exName = document.getElementById('newDbExName').value.trim();
+let exVideo = document.getElementById('newDbExVideo').value.trim();
+const exNotes = document.getElementById('newDbExNotes').value.trim();
+if (!exName) {
+showToast('⚠️ يرجى كتابة اسم التمرين الجديد أولاً');
+return;
+}
+if (!exVideo) {
+exVideo = 'https://youtu.be/sopilXEBQxA';
+}
+if (!coachDatabase[targetMuscle]) {
+coachDatabase[targetMuscle] = [];
+}
+coachDatabase[targetMuscle].push({
+name: exName,
+videoUrl: exVideo,
+notes: exNotes || 'مضاف حديثاً من الكابتن.'
+});
+document.getElementById('coachMuscleSelect').value = targetMuscle;
+initCoachDatabaseSelectors();
+document.getElementById('coachMuscleSelect').value = targetMuscle;
+onCoachMuscleChange();
+const newIdx = coachDatabase[targetMuscle].length - 1;
+document.getElementById('coachExerciseSelect').value = newIdx;
+onCoachExerciseSelectChange();
+document.getElementById('newDbExName').value = '';
+document.getElementById('newDbExVideo').value = '';
+document.getElementById('newDbExNotes').value = '';
+document.getElementById('quickAddDbBox').classList.add('hidden');
+showToast(⁠✅ تم حفظ (${exName}) في قسم (${targetMuscle}) داخل الـ DATA BASE!⁠);
+}
+function addNewClient() {
+const nameInput = document.getElementById('newClientName');
+const name = nameInput.value.trim();
+if (!name) return;
+const slug = 'client_' + Math.floor(100 + Math.random() * 900);
+const select = document.getElementById('coachClientSelect');
+const opt = document.createElement('option');
+opt.value = slug;
+opt.textContent = ⁠${name} (Sheet Tab: جدول_${name.replace(/\s+/g, '_')})⁠;
+select.appendChild(opt);
+select.value = slug;
+nameInput.value = '';
+updateClientLinkPreview();
+showToast(⁠🎉 تم إنشاء شيت خاص باسم (${name}) وتوليد الرابط الخاص به!⁠);
+}
+function updateClientLinkPreview() {
+const select = document.getElementById('coachClientSelect');
+const clientNameClean = select.options[select.selectedIndex].text.split(' (')[0];
+document.getElementById('clientUniqueUrl').textContent = ⁠${DOMAIN_URL}/#client=${select.value}⁠;
+document.getElementById('activeClientHeader').innerHTML = ⁠اللاعب: <span class="text-emerald-400 font-bold">${clientNameClean}</span>⁠;
+}
+function copyClientLink() {
+const url = document.getElementById('clientUniqueUrl').textContent;
+const tempInput = document.createElement('input');
+tempInput.value = url;
+document.body.appendChild(tempInput);
+tempInput.select();
+document.execCommand('copy');
+document.body.removeChild(tempInput);
+showToast('📋 تم نسخ رابط العميل! أرسله له.');
+}
+function addNewTrainingDay() {
+const titleInput = document.getElementById('newCustomDayTitle');
+const title = titleInput.value.trim();
+if (!title) {
+showToast('⚠️ يرجى كتابة اسم اليوم الجديد أولاً');
+return;
+}
+const newKey = 'd_' + Date.now();
+scheduleData[newKey] = {
+title: title,
+exercises: []
+};
+currentDayKey = newKey;
+titleInput.value = '';
+syncDayDropdowns();
+document.getElementById('coachTargetDaySelect').value = newKey;
+renderCoachDaySummary();
+showToast(⁠✅ تمت إضافة (${title})! يمكنك الآن إضافة تمارين وجولات له.⁠);
+}
+function deleteCurrentTrainingDay() {
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+if (!coachDaySelect) return;
+const targetDay = coachDaySelect.value;
+const dayKeys = Object.keys(scheduleData);
+if (dayKeys.length <= 1) {
+showToast('⚠️ لا يمكنك حذف جميع الأيام، يجب أن يبقى يوم واحد على الأقل.');
+return;
+}
+const dayTitle = scheduleData[targetDay] ? scheduleData[targetDay].title : targetDay;
+if (confirm(⁠هل أنت متأكد من حذف (${dayTitle}) تماماً؟⁠)) {
+delete scheduleData[targetDay];
+const remainingKeys = Object.keys(scheduleData);
+currentDayKey = remainingKeys[0];
+syncDayDropdowns();
+renderExercises();
+renderCoachDaySummary();
+showToast(⁠🗑️ تم حذف اليوم بنجاح.⁠);
+}
+}
+function clearCurrentDayExercises() {
+const targetDay = document.getElementById('coachTargetDaySelect').value;
+if (scheduleData[targetDay]) {
+scheduleData[targetDay].exercises = [];
+if (currentDayKey === targetDay) renderExercises();
+renderCoachDaySummary();
+showToast(⁠🧹 تم تصفير تمارين هذا اليوم.⁠);
+}
+}
+function deleteExerciseFromDay(dayKey, exIdx) {
+if (scheduleData[dayKey]) {
+scheduleData[dayKey].exercises.splice(exIdx, 1);
+renderExercises();
+renderCoachDaySummary();
+showToast(⁠🗑️ تم حذف التمرين بنجاح.⁠);
+}
+}
+function renderCoachDaySummary() {
+const coachDaySelect = document.getElementById('coachTargetDaySelect');
+if (!coachDaySelect) return;
+const targetDay = coachDaySelect.value || currentDayKey;
+const dayObj = scheduleData[targetDay];
+const listEl = document.getElementById('coachCurrentDayExercisesList');
+const countBadge = document.getElementById('coachDayExCount');
+if (!dayObj || !listEl) return;
+countBadge.textContent = ⁠${dayObj.exercises.length} تمارين⁠;
+listEl.innerHTML = '';
+if (dayObj.exercises.length === 0) {
+listEl.innerHTML = ⁠<div class="text-center text-xs text-slate-500 py-3 bg-slate-950 rounded-xl border border-slate-800">لا توجد تمارين في هذا اليوم بعد.</div>⁠;
+return;
+}
+dayObj.exercises.forEach((ex, idx) => {
+listEl.insertAdjacentHTML('beforeend', ⁠<div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center"> <div> <div class="text-xs font-extrabold text-white">${idx + 1}. ${ex.currentName} <span class="text-emerald-400 text-[10px]">(${ex.sets.length} جولات × ${ex.targetReps})</span></div> <div class="text-[10px] text-slate-400">${ex.muscle} | البدائل: ${Math.max(0, ex.alternatives.length - 1)}</div> </div> <button onclick="deleteExerciseFromDay('${targetDay}', ${idx})" class="w-7 h-7 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/30 flex items-center justify-center text-xs transition" title="حذف التمرين"> <i class="fa-solid fa-trash"></i> </button> </div>⁠);
+});
+}
+function addExerciseFromCoach() {
+const targetDay = document.getElementById('coachTargetDaySelect').value || currentDayKey;
+const selectedMuscle = document.getElementById('coachMuscleSelect').value || 'عضلة مستهدفة';
+const exList = coachDatabase[selectedMuscle] || [];
+const chosenIdx = parseInt(document.getElementById('coachExerciseSelect').value) || 0;
+const chosenExObj = exList[chosenIdx] || { name: 'تمرين مخصص', videoUrl: 'https://youtu.be/sopilXEBQxA', notes: '' };
+const mainEx = chosenExObj.name;
+const muscle = selectedMuscle;
+const setsCount = Math.max(1, parseInt(document.getElementById('coachSetsCount').value) || 3);
+const targetReps = document.getElementById('coachTargetReps').value.trim() || '8-12';
+const initWeight = parseFloat(document.getElementById('coachInitWeight').value) || 20;
+const restSeconds = parseInt(document.getElementById('coachRestSec').value) || 90;
+const notes = document.getElementById('coachExNotes').value.trim() || chosenExObj.notes || 'تحكم كامل بالوزن.';
+const videoUrl = document.getElementById('coachExVideo').value.trim() || chosenExObj.videoUrl || 'https://youtu.be/sopilXEBQxA';
+const checkedDbAlts = [];
+document.querySelectorAll('.coach-alt-checkbox:checked').forEach(cb => {
+const altIdx = parseInt(cb.value);
+if (exList[altIdx]) {
+checkedDbAlts.push({
+name: exList[altIdx].name,
+videoUrl: exList[altIdx].videoUrl,
+notes: exList[altIdx].notes
+});
+}
+});
+const newSets = [];
+for (let i = 1; i <= setsCount; i++) {
+newSets.push({
+setNum: i,
+prevWeight: initWeight,
+prevReps: parseInt(targetReps.split('-')[0]) || 10,
+curWeight: '',
+curReps: '',
+completed: false,
+isPR: false
+});
+}
+if (!scheduleData[targetDay]) {
+scheduleData[targetDay] = { title: 'يوم تدريبي', exercises: [] };
+}
+scheduleData[targetDay].exercises.push({
+id: 'ex_' + Date.now(),
+order: scheduleData[targetDay].exercises.length + 1,
+currentName: mainEx,
+muscle: muscle,
+targetReps: targetReps,
+restSeconds: restSeconds,
+videoUrl: videoUrl,
+notes: notes,
+alternatives: [
+{ name: ⁠${mainEx} (التمرين الأساسي)⁠, videoUrl: videoUrl, notes: notes },
+...checkedDbAlts
+],
+sets: newSets
+});
+currentDayKey = targetDay;
+renderExercises();
+renderCoachDaySummary();
+showToast(⁠✅ تمت إضافة (${mainEx} - ${setsCount} جولات) إلى ${scheduleData[targetDay].title}!⁠);
+}
+</script>
+</body>
+</html>
